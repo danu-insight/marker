@@ -1,6 +1,7 @@
 import fitz as pymupdf
 
 from marker.cleaners.table import merge_table_blocks, create_new_tables
+from marker.debug.data import dump_bbox_debug_data
 from marker.extract_text import get_text_blocks
 from marker.cleaners.headers import filter_header_footer, filter_common_titles
 from marker.cleaners.equations import replace_equations
@@ -12,7 +13,6 @@ from marker.cleaners.bullets import replace_bullets
 from marker.markdown import merge_spans, merge_lines, get_full_text
 from marker.schema import Page, BlockType
 from typing import List, Dict, Tuple, Optional
-from copy import deepcopy
 import re
 import magic
 from marker.settings import settings
@@ -91,7 +91,7 @@ def convert_single_pdf(
         tess_lang,
         spell_lang,
         max_pages=max_pages,
-        parallel=parallel_factor * settings.OCR_PARALLEL_WORKERS
+        parallel=int(parallel_factor * settings.OCR_PARALLEL_WORKERS)
     )
 
     out_meta["toc"] = toc
@@ -102,13 +102,13 @@ def convert_single_pdf(
         return "", out_meta
 
     # Unpack models from list
-    nougat_model, layoutlm_model, order_model, edit_model = model_lst
+    texify_model, layoutlm_model, order_model, edit_model = model_lst
 
     block_types = detect_document_block_types(
         doc,
         blocks,
         layoutlm_model,
-        batch_size=settings.LAYOUT_BATCH_SIZE * parallel_factor
+        batch_size=int(settings.LAYOUT_BATCH_SIZE * parallel_factor)
     )
 
     # Find headers and footers
@@ -117,11 +117,14 @@ def convert_single_pdf(
 
     annotate_spans(blocks, block_types)
 
+    # Dump debug data if flags are set
+    dump_bbox_debug_data(doc, blocks)
+
     blocks = order_blocks(
         doc,
         blocks,
         order_model,
-        batch_size=settings.ORDERER_BATCH_SIZE * parallel_factor
+        batch_size=int(settings.ORDERER_BATCH_SIZE * parallel_factor)
     )
 
     # Fix code blocks
@@ -143,8 +146,8 @@ def convert_single_pdf(
         doc,
         blocks,
         block_types,
-        nougat_model,
-        batch_size=settings.NOUGAT_BATCH_SIZE * parallel_factor
+        texify_model,
+        batch_size=int(settings.TEXIFY_BATCH_SIZE * parallel_factor)
     )
     out_meta["block_stats"]["equations"] = eq_stats
 

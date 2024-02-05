@@ -13,13 +13,12 @@ ocrmypdf.configure_logging(verbosity=ocrmypdf.Verbosity.quiet)
 
 
 def ocr_entire_page(page, lang: str, spellchecker: Optional[SpellChecker] = None) -> List[Block]:
-    match settings.OCR_ENGINE:
-        case "tesseract":
-            return ocr_entire_page_tess(page, lang, spellchecker)
-        case "ocrmypdf":
-            return ocr_entire_page_ocrmp(page, lang, spellchecker)
-        case _:
-            raise ValueError(f"Unknown OCR engine {settings.OCR_ENGINE}")
+    if settings.OCR_ENGINE == "tesseract":
+        return ocr_entire_page_tess(page, lang, spellchecker)
+    elif settings.OCR_ENGINE == "ocrmypdf":
+        return ocr_entire_page_ocrmp(page, lang, spellchecker)
+    else:
+        raise ValueError(f"Unknown OCR engine {settings.OCR_ENGINE}")
 
 
 def ocr_entire_page_tess(page, lang: str, spellchecker: Optional[SpellChecker] = None) -> List[Block]:
@@ -53,7 +52,8 @@ def ocr_entire_page_ocrmp(page, lang: str, spellchecker: Optional[SpellChecker] 
         outbytes,
         language=lang,
         output_type="pdf",
-        redo_ocr=True,
+        redo_ocr=None if settings.OCR_ALL_PAGES else True,
+        force_ocr=True if settings.OCR_ALL_PAGES else None,
         progress_bar=False,
         optimize=False,
         fast_web_view=1e6,

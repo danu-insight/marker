@@ -10,10 +10,24 @@ import torch
 
 class Settings(BaseSettings):
     # General
-    TORCH_DEVICE: str = "cpu"
+    TORCH_DEVICE: Optional[str] = None
+
+    @computed_field
+    @property
+    def TORCH_DEVICE_MODEL(self) -> str:
+        if self.TORCH_DEVICE is not None:
+            return self.TORCH_DEVICE
+
+        if torch.cuda.is_available():
+            return "cuda"
+
+        if torch.backends.mps.is_available():
+            return "mps"
+
+        return "cpu"
+
     INFERENCE_RAM: int = 40 # How much VRAM each GPU has (in GB).
     VRAM_PER_TASK: float = 2.5 # How much VRAM to allocate per task (in GB).  Peak marker VRAM usage is around 3GB, but avg across workers is lower.
-    DEBUG: bool = False # Enable debug logging
     DEFAULT_LANG: str = "English" # Default language we assume files to be in, should be one of the keys in TESSERACT_LANGUAGES
 
     SUPPORTED_FILETYPES: Dict = {
@@ -38,6 +52,10 @@ class Settings(BaseSettings):
         "French": "fra",
         "German": "deu",
         "Russian": "rus",
+        "Chinese": "chi_sim",
+        "Japanese": "jpn",
+        "Korean": "kor",
+        "Hindi": "hin",
     }
     TESSERACT_TIMEOUT: int = 20 # When to give up on OCR
     SPELLCHECK_LANGUAGES: Dict = {
@@ -47,19 +65,21 @@ class Settings(BaseSettings):
         "French": "fr",
         "German": "de",
         "Russian": "ru",
+        "Chinese": None,
+        "Japanese": None,
+        "Korean": None,
+        "Hindi": None,
     }
     OCR_ALL_PAGES: bool = False # Run OCR on every page even if text can be extracted
     OCR_PARALLEL_WORKERS: int = 2 # How many CPU workers to use for OCR
     OCR_ENGINE: str = "ocrmypdf" # Which OCR engine to use, either "tesseract" or "ocrmypdf".  Ocrmypdf is higher quality, but slower.
 
-    # Nougat model
-    NOUGAT_MODEL_MAX: int = 512 # Max inference length for nougat
-    NOUGAT_TOKEN_BUFFER: int = 256 # Number of tokens to buffer above max for nougat
-    NOUGAT_HALLUCINATION_WORDS: List[str] = ["[MISSING_PAGE_POST]", "## References\n", "**Figure Captions**\n", "Footnote",
-                                  "\par\par\par", "## Chapter", "Fig.", "particle", "[REPEATS]", "[TRUNCATED]", "### ", "effective field strength", "\Phi_{\rm eff}"]
-    NOUGAT_DPI: int = 96 # DPI to render images at, matches default settings for nougat
-    NOUGAT_MODEL_NAME: str = "0.1.0-small" # Name of the model to use
-    NOUGAT_BATCH_SIZE: int = 6 if TORCH_DEVICE == "cuda" else 1 # Batch size for nougat, don't batch on cpu
+    # Texify model
+    TEXIFY_MODEL_MAX: int = 384 # Max inference length for texify
+    TEXIFY_TOKEN_BUFFER: int = 256 # Number of tokens to buffer above max for texify
+    TEXIFY_DPI: int = 96 # DPI to render images at
+    TEXIFY_BATCH_SIZE: int = 2 if TORCH_DEVICE_MODEL == "cpu" else 6 # Batch size for texify, lower on cpu due to float32
+    TEXIFY_MODEL_NAME: str = "vikp/texify"
 
     # Layout model
     BAD_SPAN_TYPES: List[str] = ["Caption", "Footnote", "Page-footer", "Page-header", "Picture"]
@@ -82,8 +102,12 @@ class Settings(BaseSettings):
 
     # Ray
     RAY_CACHE_PATH: Optional[str] = None # Where to save ray cache
-    RAY_DASHBOARD_HOST: str = "127.0.0.1"
     RAY_CORES_PER_WORKER: int = 1 # How many cpu cores to allocate per worker
+
+    # Debug
+    DEBUG: bool = False # Enable debug logging
+    DEBUG_DATA_FOLDER: Optional[str] = None
+    DEBUG_LEVEL: int = 0 # 0 to 2, 2 means log everything
 
     @computed_field
     @property
@@ -93,7 +117,15 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def MODEL_DTYPE(self) -> torch.dtype:
-        return torch.bfloat16 if self.CUDA else torch.float32
+        if self.TORCH_DEVICE_MODEL == "cuda":
+            return torch.bfloat16
+        else:
+            return torch.float32
+
+    @computed_field
+    @property
+    def TEXIFY_DTYPE(self) -> torch.dtype:
+        return torch.float32 if self.TORCH_DEVICE_MODEL == "cpu" else torch.float16
 
     class Config:
         env_file = find_dotenv("local.env")

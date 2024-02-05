@@ -8,8 +8,6 @@ import torch
 import torch.nn.functional as F
 from marker.postprocessors.t5 import T5ForTokenClassification, byt5_tokenize
 
-tokenizer = AutoTokenizer.from_pretrained(settings.EDITOR_MODEL_NAME)
-
 
 def load_editing_model():
     if not settings.ENABLE_EDITOR_MODEL:
@@ -18,7 +16,7 @@ def load_editing_model():
     model = T5ForTokenClassification.from_pretrained(
             settings.EDITOR_MODEL_NAME,
             torch_dtype=settings.MODEL_DTYPE,
-        ).to(settings.TORCH_DEVICE)
+        ).to(settings.TORCH_DEVICE_MODEL)
     model.eval()
 
     model.config.label2id = {
