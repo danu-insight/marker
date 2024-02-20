@@ -50,7 +50,7 @@ RUN wget -O /start.sh https://raw.githubusercontent.com/runpod/containers/main/c
 RUN chmod +x /start.sh
 
 # Welcome Message
-RUN echo 'echo -e "\nWelcome to the `marker` Docker image."' >> /root/.bashrc
+RUN echo 'echo -e "\nWelcome to the \`marker\` Docker image."' >> /root/.bashrc
 
 # Set the default command for the container
 CMD [ "/start.sh" ]
