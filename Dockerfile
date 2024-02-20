@@ -32,3 +32,4 @@ ENV TESSDATA_PREFIX=${TESSDATA_PREFIX}
 # Test to make sure the TESSDATA_PREFIX is set correctly
 RUN find / -name tessdata 2> /dev/null | grep "${TESSDATA_PREFIX}"
 
+CMD ["bash"]
